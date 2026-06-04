@@ -1,0 +1,1517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wavepacket Simulator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f4;
+      --panel: #ffffff;
+      --ink: #202124;
+      --muted: #666b73;
+      --line: #d7d9dd;
+      --red: #d92f2f;
+      --blue: #286bb5;
+      --green: #26765c;
+      --button: #202124;
+      --button-text: #ffffff;
+      --focus: #f0b429;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      gap: 18px;
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    aside,
+    section.stage {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(30, 34, 38, 0.08);
+    }
+
+    aside {
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 8px;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    select,
+    input[type="range"],
+    input[type="number"] {
+      width: 100%;
+    }
+
+    select,
+    input[type="number"] {
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid #c7cad1;
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+    }
+
+    input[type="range"] {
+      accent-color: var(--blue);
+    }
+
+    input[readonly] {
+      background: #f4f5f6;
+      color: #2f343a;
+      cursor: default;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 74px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mode-switch button {
+      background: #eef0f3;
+      color: var(--ink);
+      border: 1px solid #d6d9df;
+    }
+
+    .mode-switch button[aria-pressed="true"] {
+      background: var(--button);
+      color: var(--button-text);
+      border-color: var(--button);
+    }
+
+    button {
+      min-height: 38px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--button);
+      color: var(--button-text);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: #eef0f3;
+      color: var(--ink);
+      border: 1px solid #d6d9df;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .equation,
+    .readout,
+    .expression-display {
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfbfa;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #2f343a;
+      overflow-wrap: anywhere;
+    }
+
+    .equation {
+      display: grid;
+      gap: 4px;
+      justify-items: start;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .equation math {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 20px;
+    }
+
+    .equation-note math {
+      font-size: 16px;
+    }
+
+    .custom-panel[hidden] {
+      display: none;
+    }
+
+    .preset-panel[hidden] {
+      display: none;
+    }
+
+    .preset-only[hidden] {
+      display: none;
+    }
+
+    .expression-display {
+      min-height: 42px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .token-grid,
+    .example-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .example-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .token-grid button,
+    .example-grid button {
+      min-height: 34px;
+      padding: 6px 7px;
+      background: #eef0f3;
+      color: var(--ink);
+      border: 1px solid #d6d9df;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .token-grid button.operator {
+      background: #eaf2fb;
+      border-color: #c8d9ef;
+    }
+
+    .token-grid button.danger {
+      background: #fbebeb;
+      border-color: #efc8c8;
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+    }
+
+    section.stage {
+      display: grid;
+      grid-template-rows: auto minmax(300px, 1fr) auto;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 58px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .plot-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .zoom-controls input[type="range"] {
+      width: 116px;
+      min-width: 86px;
+    }
+
+    .zoom-controls button {
+      width: 34px;
+      min-height: 32px;
+      padding: 0;
+      background: #eef0f3;
+      color: var(--ink);
+      border: 1px solid #d6d9df;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 18px;
+      height: 3px;
+      margin-right: 6px;
+      vertical-align: 3px;
+      border-radius: 2px;
+      background: var(--red);
+    }
+
+    .legend span:nth-child(2)::before {
+      background: var(--green);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 300px;
+      background: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 300px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+
+      aside {
+        max-height: none;
+      }
+
+      section.stage {
+        min-height: 58vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <aside>
+      <h1>Wavepacket Simulator</h1>
+      <p class="subtitle">Preset superpositions for time propagation: sum A_i trig(k_i x - ω(k_i)t + φ_i).</p>
+
+      <div class="control-group">
+        <label>Simulation mode</label>
+        <div class="mode-switch" role="group" aria-label="Simulation mode">
+          <button id="presetMode" type="button" aria-pressed="true">Preset</button>
+          <button id="customMode" type="button" aria-pressed="false">Custom</button>
+        </div>
+      </div>
+
+      <div id="presetPanel" class="control-group preset-panel">
+        <label for="preset">Preset</label>
+        <select id="preset"></select>
+      </div>
+
+      <div class="control-group">
+        <div class="buttons">
+          <button id="start">Start</button>
+          <button id="pause" class="secondary">Pause</button>
+          <button id="reset" class="secondary">Reset</button>
+        </div>
+      </div>
+
+      <div id="customPanel" class="control-group custom-panel" hidden>
+        <label>Custom f(x,t)</label>
+        <div id="customExpression" class="expression-display" aria-live="polite"></div>
+        <div id="tokenPad" class="token-grid" aria-label="Expression buttons">
+          <button data-token="x">x</button>
+          <button data-token="t">t</button>
+          <button data-token="pi">π</button>
+          <button data-token="e">e</button>
+          <button data-token="sin(" class="operator">sin(</button>
+          <button data-token="cos(" class="operator">cos(</button>
+          <button data-token="tan(" class="operator">tan(</button>
+          <button data-token="exp(" class="operator">exp(</button>
+          <button data-token="sqrt(" class="operator">sqrt(</button>
+          <button data-token="abs(" class="operator">abs(</button>
+          <button data-token="log(" class="operator">log(</button>
+          <button data-token="^" class="operator">^</button>
+          <button data-token="7">7</button>
+          <button data-token="8">8</button>
+          <button data-token="9">9</button>
+          <button data-token="/" class="operator">/</button>
+          <button data-token="4">4</button>
+          <button data-token="5">5</button>
+          <button data-token="6">6</button>
+          <button data-token="*" class="operator">*</button>
+          <button data-token="1">1</button>
+          <button data-token="2">2</button>
+          <button data-token="3">3</button>
+          <button data-token="-" class="operator">-</button>
+          <button data-token="0">0</button>
+          <button data-token=".">.</button>
+          <button data-token="(" class="operator">(</button>
+          <button data-token=")" class="operator">)</button>
+          <button data-action="back" class="danger">Back</button>
+          <button data-action="clear" class="danger">Clear</button>
+          <button data-token="+" class="operator">+</button>
+          <button data-action="reset-time">t=0</button>
+        </div>
+        <div class="example-grid">
+          <button data-example="traveling-cos">cos(x - t)</button>
+          <button data-example="chirped">cos(10*x - t^2)</button>
+          <button data-example="gaussian">exp(-0.15*(x - 4*t)^2) * cos(8*x - 18*t)</button>
+        </div>
+      </div>
+
+      <div class="control-group preset-only">
+        <label for="dispersion">Dispersion relation</label>
+        <select id="dispersion">
+          <option value="quadratic">ω(k) = k^2</option>
+          <option value="linear">ω(k) = v k</option>
+          <option value="sqrt">ω(k) = sqrt(k)</option>
+        </select>
+      </div>
+
+      <div class="control-group preset-only">
+        <label for="k0">Central wave number k0</label>
+        <div class="row">
+          <input id="k0" type="range" min="1" max="18" value="10" step="0.1" />
+          <input id="k0Value" type="number" min="1" max="18" value="10" step="0.1" readonly inputmode="none" aria-readonly="true" />
+        </div>
+
+        <label for="deltaK">Half-width delta k</label>
+        <div class="row">
+          <input id="deltaK" type="range" min="0" max="8" value="2" step="0.1" />
+          <input id="deltaKValue" type="number" min="0" max="8" value="2" step="0.1" readonly inputmode="none" aria-readonly="true" />
+        </div>
+
+        <label for="terms">Number of component waves</label>
+        <div class="row">
+          <input id="terms" type="range" min="1" max="160" value="100" step="1" />
+          <input id="termsValue" type="number" min="1" max="160" value="100" step="1" readonly inputmode="none" aria-readonly="true" />
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="speed">Animation speed</label>
+        <div class="row">
+          <input id="speed" type="range" min="0.02" max="2.0" value="0.25" step="0.02" />
+          <input id="speedValue" type="number" min="0.02" max="2.0" value="0.25" step="0.02" readonly inputmode="none" aria-readonly="true" />
+        </div>
+
+        <label for="xWindow">X window</label>
+        <select id="xWindow">
+          <option value="-10,10">-10 to 10</option>
+          <option value="-2,24">-2 to 24</option>
+          <option value="-20,20">-20 to 20</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div id="equation" class="equation"></div>
+        <div id="readout" class="readout"></div>
+      </div>
+    </aside>
+
+    <section class="stage">
+      <div class="topbar">
+        <h2 id="plotTitle">Propagation</h2>
+        <div class="plot-actions">
+          <div class="legend">
+            <span>wave sum</span>
+            <span>packet center</span>
+          </div>
+          <div class="zoom-controls" aria-label="Plot zoom">
+            <button id="zoomOut" type="button" title="Zoom out" aria-label="Zoom out">-</button>
+            <input id="zoomSlider" type="range" min="-80" max="120" value="0" step="1" title="Zoom level" aria-label="Zoom level" />
+            <button id="zoomIn" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="plot" width="1200" height="700" aria-label="Animated wavepacket plot"></canvas>
+      </div>
+      <div class="footer">
+        <span>Press Start to animate. The packet in the PDF example moves near x = 2 k0 t when ω(k)=k^2.</span>
+        <span id="status">t = 0.000</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const presets = [
+      {
+        id: "single-cos",
+        name: "Single carrier: cos(10x)",
+        k0: 10,
+        deltaK: 0,
+        terms: 1,
+        dispersion: "quadratic",
+        xWindow: "-10,10",
+        builder: "uniform-cos",
+        equation: "cos(k0 x - ω(k0)t)",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mn>0</mn></msub><mi>x</mi><mo>-</mo><mi>&omega;</mi><mo>(</mo><msub><mi>k</mi><mn>0</mn></msub><mo>)</mo><mi>t</mi><mo>)</mo></mrow></math>'
+      },
+      {
+        id: "beats-close",
+        name: "Beats: cos(9.5x) + cos(10.5x)",
+        k0: 10,
+        deltaK: 0.5,
+        terms: 2,
+        dispersion: "linear",
+        xWindow: "-10,10",
+        builder: "edge-cos",
+        equation: "cos(k1 x - ω1 t) + cos(k2 x - ω2 t)",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mn>1</mn></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mn>1</mn></msub><mi>t</mi><mo>)</mo><mo>+</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mn>2</mn></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mn>2</mn></msub><mi>t</mi><mo>)</mo></mrow></math>'
+      },
+      {
+        id: "three-around",
+        name: "Three waves around k0",
+        k0: 10,
+        deltaK: 2,
+        terms: 3,
+        dispersion: "linear",
+        xWindow: "-10,10",
+        builder: "uniform-cos",
+        equation: "sum cos(k_i x - ω_i t), k_i = 8, 10, 12",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mi>i</mi></msub><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>{</mo><mn>8</mn><mo>,</mo><mn>10</mn><mo>,</mo><mn>12</mn><mo>}</mo></mrow></math></div>'
+      },
+      {
+        id: "five-around",
+        name: "Five waves around k0",
+        k0: 10,
+        deltaK: 2,
+        terms: 5,
+        dispersion: "linear",
+        xWindow: "-10,10",
+        builder: "uniform-cos",
+        equation: "sum cos(k_i x - ω_i t), k_i = 8..12",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>5</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mi>i</mi></msub><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>8</mn><mo>,</mo><mn>12</mn><mo>]</mo></mrow></math></div>'
+      },
+      {
+        id: "pdf-packet",
+        name: "PDF packet: 100 waves, k = 8..12",
+        k0: 10,
+        deltaK: 2,
+        terms: 100,
+        dispersion: "quadratic",
+        xWindow: "-2,24",
+        builder: "uniform-cos",
+        equation: "sum cos(k x - k^2 t), 100 k values from 8 to 12",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>=</mo><mn>8</mn><mo>+</mo><mfrac><mrow><mn>4</mn><mo>(</mo><mi>i</mi><mo>-</mo><mn>1</mn><mo>)</mo></mrow><mn>99</mn></mfrac><mo>,</mo><mspace width="0.5em"></mspace><mn>1</mn><mo>&le;</mo><mi>i</mi><mo>&le;</mo><mn>100</mn></mrow></math></div>'
+      },
+      {
+        id: "narrow-dk",
+        name: "Narrow delta k: wider packet",
+        k0: 10,
+        deltaK: 1,
+        terms: 100,
+        dispersion: "quadratic",
+        xWindow: "-10,10",
+        builder: "uniform-cos",
+        equation: "smaller delta k gives a wider packet",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>9</mn><mo>,</mo><mn>11</mn><mo>]</mo></mrow></math></div>'
+      },
+      {
+        id: "wide-dk",
+        name: "Wide delta k: tighter packet",
+        k0: 10,
+        deltaK: 4,
+        terms: 100,
+        dispersion: "quadratic",
+        xWindow: "-10,10",
+        builder: "uniform-cos",
+        equation: "larger delta k gives a tighter packet",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>6</mn><mo>,</mo><mn>14</mn><mo>]</mo></mrow></math></div>'
+      },
+      {
+        id: "mixed-trig",
+        name: "Mixed trig: sin/cos superposition",
+        k0: 8,
+        deltaK: 2.5,
+        terms: 48,
+        dispersion: "quadratic",
+        xWindow: "-2,24",
+        builder: "mixed-trig",
+        equation: "alternating sin and cos terms with small phase offsets",
+        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>48</mn></munderover><msub><mi>A</mi><mi>i</mi></msub><msub><mi>f</mi><mi>i</mi></msub><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>+</mo><msub><mi>&phi;</mi><mi>i</mi></msub><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>&isin;</mo><mo>{</mo><mi>sin</mi><mo>,</mo><mi>cos</mi><mo>}</mo></mrow></math></div>'
+      }
+    ];
+
+    const el = {
+      presetMode: document.querySelector("#presetMode"),
+      customMode: document.querySelector("#customMode"),
+      presetPanel: document.querySelector("#presetPanel"),
+      presetOnly: document.querySelectorAll(".preset-only"),
+      preset: document.querySelector("#preset"),
+      start: document.querySelector("#start"),
+      pause: document.querySelector("#pause"),
+      reset: document.querySelector("#reset"),
+      dispersion: document.querySelector("#dispersion"),
+      k0: document.querySelector("#k0"),
+      k0Value: document.querySelector("#k0Value"),
+      deltaK: document.querySelector("#deltaK"),
+      deltaKValue: document.querySelector("#deltaKValue"),
+      terms: document.querySelector("#terms"),
+      termsValue: document.querySelector("#termsValue"),
+      speed: document.querySelector("#speed"),
+      speedValue: document.querySelector("#speedValue"),
+      xWindow: document.querySelector("#xWindow"),
+      customPanel: document.querySelector("#customPanel"),
+      customExpression: document.querySelector("#customExpression"),
+      tokenPad: document.querySelector("#tokenPad"),
+      equation: document.querySelector("#equation"),
+      readout: document.querySelector("#readout"),
+      canvas: document.querySelector("#plot"),
+      plotTitle: document.querySelector("#plotTitle"),
+      zoomIn: document.querySelector("#zoomIn"),
+      zoomOut: document.querySelector("#zoomOut"),
+      zoomSlider: document.querySelector("#zoomSlider"),
+      status: document.querySelector("#status")
+    };
+
+    const ctx = el.canvas.getContext("2d");
+    let running = false;
+    let simTime = 0;
+    let lastFrame = performance.now();
+    let selectedMode = "preset";
+    let selectedPreset = presets[0];
+    let customTokens = ["sin", "(", "x", "-", "t", ")"];
+    let customCompiled = null;
+    let customError = "";
+    let basePlotView = { xMin: -2, xMax: 24 };
+    let plotView = { xMin: -2, xMax: 24 };
+    let zoomLevel = 0;
+    const MIN_X_SPAN = 0.01;
+    const MAX_X_SPAN = 1000;
+
+    for (const preset of presets) {
+      const option = document.createElement("option");
+      option.value = preset.id;
+      option.textContent = preset.name;
+      el.preset.appendChild(option);
+    }
+
+    function omega(k) {
+      const mode = el.dispersion.value;
+      if (mode === "linear") return Number(el.k0.value) * k;
+      if (mode === "sqrt") return Math.sqrt(Math.max(k, 0.000001));
+      return k * k;
+    }
+
+    function groupVelocity(k0) {
+      const mode = el.dispersion.value;
+      if (mode === "linear") return k0;
+      if (mode === "sqrt") return 1 / (2 * Math.sqrt(Math.max(k0, 0.000001)));
+      return 2 * k0;
+    }
+
+    function phaseVelocity(k0) {
+      return omega(k0) / Math.max(k0, 0.000001);
+    }
+
+    function lerp(a, b, u) {
+      return a + (b - a) * u;
+    }
+
+    function parseXWindowValue(value) {
+      const parts = value.split(",").map(Number);
+      return { xMin: parts[0], xMax: parts[1] };
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function resetPlotView() {
+      basePlotView = parseXWindowValue(el.xWindow.value);
+      plotView = { ...basePlotView };
+      zoomLevel = 0;
+      updateZoomSlider();
+    }
+
+    function updateZoomSlider() {
+      el.zoomSlider.value = String(Math.round(zoomLevel));
+    }
+
+    function applyZoomLevel(level) {
+      zoomLevel = clamp(level, Number(el.zoomSlider.min), Number(el.zoomSlider.max));
+      const center = (plotView.xMin + plotView.xMax) / 2;
+      const baseSpan = basePlotView.xMax - basePlotView.xMin;
+      const nextSpan = clamp(baseSpan * Math.pow(0.96, zoomLevel), MIN_X_SPAN, MAX_X_SPAN);
+      plotView = {
+        xMin: center - nextSpan / 2,
+        xMax: center + nextSpan / 2
+      };
+      updateZoomSlider();
+      draw();
+    }
+
+    function zoomPlot(levelDelta) {
+      applyZoomLevel(zoomLevel + levelDelta);
+    }
+
+    function packetCenterX() {
+      if (isCustomMode()) return null;
+      if (Number(el.deltaK.value) <= 0 || Number(el.terms.value) < 2) return null;
+      return groupVelocity(Number(el.k0.value)) * simTime;
+    }
+
+    function centerPlotOn(x) {
+      const span = plotView.xMax - plotView.xMin;
+      plotView = {
+        xMin: x - span / 2,
+        xMax: x + span / 2
+      };
+    }
+
+    function termAmplitudeScale(terms) {
+      return Math.max(1, terms.reduce((sum, term) => sum + Math.abs(term.amp), 0));
+    }
+
+    function estimateMaxK(terms) {
+      if (!terms.length) return 1;
+      return Math.max(1, ...terms.map((term) => Math.abs(term.k)));
+    }
+
+    function chooseSampleCount(plotW, visibleSpan, terms, custom) {
+      const base = Math.max(360, Math.floor(plotW * 1.25));
+      if (custom || !terms.length) return base;
+      const waveAware = Math.floor(visibleSpan * estimateMaxK(terms) * 2.5);
+      return clamp(Math.max(base, waveAware), base, 9000);
+    }
+
+    const customExamples = {
+      "traveling-cos": ["cos", "(", "x", "-", "t", ")"],
+      "chirped": ["cos", "(", "1", "0", "*", "x", "-", "t", "^", "2", ")"],
+      "gaussian": [
+        "exp", "(", "-", "0", ".", "1", "5", "*", "(", "x", "-", "4", "*", "t", ")", "^", "2", ")",
+        "*",
+        "cos", "(", "8", "*", "x", "-", "1", "8", "*", "t", ")"
+      ]
+    };
+
+    const parserFunctions = {
+      sin: Math.sin,
+      cos: Math.cos,
+      tan: Math.tan,
+      exp: Math.exp,
+      sqrt: Math.sqrt,
+      abs: Math.abs,
+      log: Math.log
+    };
+
+    const parserConstants = {
+      pi: Math.PI,
+      e: Math.E
+    };
+
+    function isCustomMode() {
+      return selectedMode === "custom";
+    }
+
+    function customExpressionText() {
+      return customTokens.length ? customTokens.join("") : "0";
+    }
+
+    function customExpressionDisplayText() {
+      return customTokens.length
+        ? customTokens.map((token) => token === "pi" ? "π" : token).join("")
+        : "0";
+    }
+
+    function renderCustomExpression() {
+      el.customExpression.textContent = customExpressionDisplayText();
+      try {
+        customCompiled = compileExpression(customExpressionText());
+        customError = "";
+      } catch (error) {
+        customCompiled = null;
+        customError = error.message;
+      }
+    }
+
+    function appendCustomToken(token) {
+      if (token.endsWith("(") && parserFunctions[token.slice(0, -1)]) {
+        customTokens.push(token.slice(0, -1), "(");
+      } else {
+        customTokens.push(token);
+      }
+      renderCustomExpression();
+      draw();
+    }
+
+    function setCustomExample(id) {
+      customTokens = [...customExamples[id]];
+      renderCustomExpression();
+      draw();
+    }
+
+    function handleCustomAction(action) {
+      if (action === "back") {
+        customTokens.pop();
+      } else if (action === "clear") {
+        customTokens = [];
+      } else if (action === "reset-time") {
+        simTime = 0;
+      }
+      renderCustomExpression();
+      draw();
+    }
+
+    function tokenizeExpression(text) {
+      const tokens = [];
+      let i = 0;
+      while (i < text.length) {
+        const ch = text[i];
+        if (/\s/.test(ch)) {
+          i += 1;
+          continue;
+        }
+        if (/[0-9.]/.test(ch)) {
+          let value = ch;
+          i += 1;
+          while (i < text.length && /[0-9.]/.test(text[i])) {
+            value += text[i];
+            i += 1;
+          }
+          if (!/^(?:\d+\.?\d*|\.\d+)$/.test(value)) {
+            throw new Error(`Bad number: ${value}`);
+          }
+          tokens.push({ type: "number", value: Number(value) });
+          continue;
+        }
+        if (/[a-zA-Z]/.test(ch)) {
+          let name = ch;
+          i += 1;
+          while (i < text.length && /[a-zA-Z]/.test(text[i])) {
+            name += text[i];
+            i += 1;
+          }
+          if (name === "x" || name === "t") {
+            tokens.push({ type: "variable", value: name });
+          } else if (parserFunctions[name]) {
+            tokens.push({ type: "function", value: name });
+          } else if (Object.prototype.hasOwnProperty.call(parserConstants, name)) {
+            tokens.push({ type: "constant", value: name });
+          } else {
+            throw new Error(`Unknown name: ${name}`);
+          }
+          continue;
+        }
+        if ("+-*/^(),".includes(ch)) {
+          tokens.push({ type: ch, value: ch });
+          i += 1;
+          continue;
+        }
+        throw new Error(`Unknown token: ${ch}`);
+      }
+      return addImplicitMultiplication(tokens);
+    }
+
+    function canEndFactor(token) {
+      return token && ["number", "variable", "constant", ")"].includes(token.type);
+    }
+
+    function canStartFactor(token) {
+      return token && ["number", "variable", "constant", "function", "("].includes(token.type);
+    }
+
+    function addImplicitMultiplication(tokens) {
+      const output = [];
+      for (const token of tokens) {
+        const prev = output[output.length - 1];
+        if (canEndFactor(prev) && canStartFactor(token)) {
+          output.push({ type: "*", value: "*" });
+        }
+        output.push(token);
+      }
+      return output;
+    }
+
+    function compileExpression(text) {
+      const tokens = tokenizeExpression(text);
+      let pos = 0;
+
+      function peek() {
+        return tokens[pos];
+      }
+
+      function match(type) {
+        if (peek() && peek().type === type) {
+          pos += 1;
+          return true;
+        }
+        return false;
+      }
+
+      function parseExpression() {
+        let node = parseTerm();
+        while (peek() && (peek().type === "+" || peek().type === "-")) {
+          const op = peek().type;
+          pos += 1;
+          node = { type: "binary", op, left: node, right: parseTerm() };
+        }
+        return node;
+      }
+
+      function parseTerm() {
+        let node = parsePower();
+        while (peek() && (peek().type === "*" || peek().type === "/")) {
+          const op = peek().type;
+          pos += 1;
+          node = { type: "binary", op, left: node, right: parsePower() };
+        }
+        return node;
+      }
+
+      function parsePower() {
+        let node = parseUnary();
+        if (match("^")) {
+          node = { type: "binary", op: "^", left: node, right: parsePower() };
+        }
+        return node;
+      }
+
+      function parseUnary() {
+        if (match("+")) return parseUnary();
+        if (match("-")) return { type: "unary", op: "-", arg: parseUnary() };
+        return parsePrimary();
+      }
+
+      function parsePrimary() {
+        const token = peek();
+        if (!token) throw new Error("Expression ended early");
+        if (token.type === "number") {
+          pos += 1;
+          return { type: "number", value: token.value };
+        }
+        if (token.type === "variable") {
+          pos += 1;
+          return { type: "variable", value: token.value };
+        }
+        if (token.type === "constant") {
+          pos += 1;
+          return { type: "number", value: parserConstants[token.value] };
+        }
+        if (token.type === "function") {
+          pos += 1;
+          if (!match("(")) throw new Error(`${token.value} needs parentheses`);
+          const arg = parseExpression();
+          if (!match(")")) throw new Error(`Missing ) after ${token.value}`);
+          return { type: "call", name: token.value, arg };
+        }
+        if (match("(")) {
+          const node = parseExpression();
+          if (!match(")")) throw new Error("Missing )");
+          return node;
+        }
+        throw new Error(`Unexpected ${token.value}`);
+      }
+
+      const ast = parseExpression();
+      if (pos < tokens.length) throw new Error(`Unexpected ${tokens[pos].value}`);
+      return (x, t) => evaluateAst(ast, x, t);
+    }
+
+    function evaluateAst(node, x, t) {
+      if (node.type === "number") return node.value;
+      if (node.type === "variable") return node.value === "x" ? x : t;
+      if (node.type === "unary") return -evaluateAst(node.arg, x, t);
+      if (node.type === "call") return parserFunctions[node.name](evaluateAst(node.arg, x, t));
+      const left = evaluateAst(node.left, x, t);
+      const right = evaluateAst(node.right, x, t);
+      if (node.op === "+") return left + right;
+      if (node.op === "-") return left - right;
+      if (node.op === "*") return left * right;
+      if (node.op === "/") return left / right;
+      return Math.pow(left, right);
+    }
+
+    function buildTerms() {
+      const k0 = Number(el.k0.value);
+      const deltaK = Number(el.deltaK.value);
+      const n = Math.max(1, Math.round(Number(el.terms.value)));
+      const terms = [];
+      const builder = selectedPreset.builder;
+
+      if (builder === "edge-cos") {
+        terms.push({ trig: "cos", k: k0 - deltaK, amp: 1, phase: 0 });
+        terms.push({ trig: "cos", k: k0 + deltaK, amp: 1, phase: 0 });
+        return terms;
+      }
+
+      for (let i = 0; i < n; i += 1) {
+        const u = n === 1 ? 0.5 : i / (n - 1);
+        const k = deltaK === 0 ? k0 : lerp(k0 - deltaK, k0 + deltaK, u);
+        if (builder === "mixed-trig") {
+          terms.push({
+            trig: i % 2 === 0 ? "cos" : "sin",
+            k,
+            amp: 0.75 + 0.25 * Math.cos(Math.PI * (u - 0.5)),
+            phase: (i % 5) * 0.18
+          });
+        } else {
+          terms.push({ trig: "cos", k, amp: 1, phase: 0 });
+        }
+      }
+      return terms;
+    }
+
+    function waveAt(x, t, terms) {
+      let y = 0;
+      for (const term of terms) {
+        const angle = term.k * x - omega(term.k) * t + term.phase;
+        y += term.amp * (term.trig === "sin" ? Math.sin(angle) : Math.cos(angle));
+      }
+      return y;
+    }
+
+    function resizeCanvas() {
+      const rect = el.canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const width = Math.max(320, Math.floor(rect.width * dpr));
+      const height = Math.max(300, Math.floor(rect.height * dpr));
+      if (el.canvas.width !== width || el.canvas.height !== height) {
+        el.canvas.width = width;
+        el.canvas.height = height;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function getBounds() {
+      return plotView;
+    }
+
+    function draw() {
+      resizeCanvas();
+      const rect = el.canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      const margin = { left: 54, right: 22, top: 24, bottom: 42 };
+      const plotW = width - margin.left - margin.right;
+      const plotH = height - margin.top - margin.bottom;
+      const custom = isCustomMode();
+      const terms = custom ? [] : buildTerms();
+      const centerX = packetCenterX();
+      if (centerX !== null) {
+        centerPlotOn(centerX);
+      }
+      const { xMin, xMax } = getBounds();
+      const visibleSpan = xMax - xMin;
+      const sampleCount = chooseSampleCount(plotW, visibleSpan, terms, custom);
+      const points = [];
+      let maxAbs = 1;
+
+      for (let i = 0; i < sampleCount; i += 1) {
+        const x = lerp(xMin, xMax, i / (sampleCount - 1));
+        const y = custom
+          ? (customCompiled ? customCompiled(x, simTime) : NaN)
+          : waveAt(x, simTime, terms);
+        points.push([x, y]);
+        if (Number.isFinite(y)) {
+          maxAbs = Math.max(maxAbs, Math.abs(y));
+        }
+      }
+
+      const yPad = 1.18;
+      const yMax = custom ? maxAbs * yPad : termAmplitudeScale(terms) * yPad;
+      const yMin = -yMax;
+      const xToPx = (x) => margin.left + ((x - xMin) / (xMax - xMin)) * plotW;
+      const yToPx = (y) => margin.top + (1 - ((y - yMin) / (yMax - yMin))) * plotH;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "#edf0f3";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const gridStep = chooseGridStep(xMax - xMin, plotW);
+      for (let x = Math.ceil(xMin / gridStep) * gridStep; x <= xMax + 1e-9; x += gridStep) {
+        const px = xToPx(x);
+        ctx.moveTo(px, margin.top);
+        ctx.lineTo(px, margin.top + plotH);
+      }
+      for (let i = -4; i <= 4; i += 1) {
+        const y = (i / 4) * yMax;
+        const py = yToPx(y);
+        ctx.moveTo(margin.left, py);
+        ctx.lineTo(margin.left + plotW, py);
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = "#30343a";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(margin.left, margin.top, plotW, plotH);
+
+      ctx.strokeStyle = "#9aa1aa";
+      ctx.beginPath();
+      const zeroY = yToPx(0);
+      ctx.moveTo(margin.left, zeroY);
+      ctx.lineTo(margin.left + plotW, zeroY);
+      const zeroX = xToPx(0);
+      if (zeroX >= margin.left && zeroX <= margin.left + plotW) {
+        ctx.moveTo(zeroX, margin.top);
+        ctx.lineTo(zeroX, margin.top + plotH);
+      }
+      ctx.stroke();
+
+      if (centerX !== null && centerX >= xMin && centerX <= xMax) {
+        ctx.strokeStyle = "#26765c";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(xToPx(centerX), margin.top);
+        ctx.lineTo(xToPx(centerX), margin.top + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.strokeStyle = "#d92f2f";
+      ctx.lineWidth = visibleSpan > 400 ? 0.9 : visibleSpan > 120 ? 1.2 : 2;
+      ctx.globalAlpha = visibleSpan > 400 ? 0.82 : 1;
+      ctx.beginPath();
+      let penDown = false;
+      for (let i = 0; i < points.length; i += 1) {
+        const [x, y] = points[i];
+        if (!Number.isFinite(y)) {
+          penDown = false;
+          continue;
+        }
+        const px = xToPx(x);
+        const py = yToPx(y);
+        if (!penDown) {
+          ctx.moveTo(px, py);
+          penDown = true;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      drawLabels({ width, height, margin, plotW, plotH, xMin, xMax, yMax, xToPx, yToPx });
+      updateReadout(terms, yMax, centerX);
+    }
+
+    function drawLabels(plot) {
+      const { margin, plotW, plotH, xMin, xMax, yMax, xToPx, yToPx } = plot;
+      ctx.fillStyle = "#4d545c";
+      ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const gridStep = chooseGridStep(xMax - xMin, plotW);
+      for (let x = Math.ceil(xMin / gridStep) * gridStep; x <= xMax + 1e-9; x += gridStep) {
+        const label = formatAxisNumber(x, gridStep);
+        ctx.fillText(label, xToPx(x), margin.top + plotH + 10);
+      }
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      for (let i = -4; i <= 4; i += 2) {
+        const y = (i / 4) * yMax;
+        ctx.fillText(formatNumber(y), margin.left - 8, yToPx(y));
+      }
+      ctx.textAlign = "right";
+      ctx.textBaseline = "top";
+      ctx.fillText("x", margin.left + plotW, margin.top + plotH + 26);
+      ctx.textAlign = "left";
+      ctx.fillText("amplitude", margin.left + 5, margin.top + 5);
+    }
+
+    function chooseGridStep(span, pixelWidth = 800) {
+      if (!Number.isFinite(span) || span <= 0) return 1;
+      const targetTicks = clamp(Math.floor(pixelWidth / 90), 4, 12);
+      const roughStep = span / targetTicks;
+      const exponent = Math.floor(Math.log10(roughStep));
+      const scale = Math.pow(10, exponent);
+      const fraction = roughStep / scale;
+      let niceFraction = 10;
+      if (fraction <= 1) niceFraction = 1;
+      else if (fraction <= 2) niceFraction = 2;
+      else if (fraction <= 5) niceFraction = 5;
+      return niceFraction * scale;
+    }
+
+    function formatAxisNumber(value, step) {
+      if (Math.abs(value) < step * 1e-6) return "0";
+      if (Math.abs(value) >= 1000) return value.toExponential(1);
+      if (step >= 1) return value.toFixed(0);
+      const decimals = Math.min(4, Math.max(1, Math.ceil(-Math.log10(step)) + 1));
+      return value.toFixed(decimals);
+    }
+
+    function formatNumber(value) {
+      const abs = Math.abs(value);
+      if (abs >= 100) return value.toFixed(0);
+      if (abs >= 10) return value.toFixed(1);
+      return value.toFixed(2);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function mi(value, attrs = "") {
+      return `<mi${attrs ? ` ${attrs}` : ""}>${value}</mi>`;
+    }
+
+    function mn(value) {
+      return `<mn>${value}</mn>`;
+    }
+
+    function mo(value, attrs = "") {
+      return `<mo${attrs ? ` ${attrs}` : ""}>${value}</mo>`;
+    }
+
+    function fixedMo(value) {
+      return mo(value, 'stretchy="false"');
+    }
+
+    function normalMi(value) {
+      return mi(value, 'mathvariant="normal"');
+    }
+
+    function row(...parts) {
+      return `<mrow>${parts.join("")}</mrow>`;
+    }
+
+    function sub(base, index) {
+      return `<msub>${base}${index}</msub>`;
+    }
+
+    function sup(base, power) {
+      return `<msup>${base}${power}</msup>`;
+    }
+
+    function subSup(base, index, power) {
+      return `<msubsup>${base}${index}${power}</msubsup>`;
+    }
+
+    function frac(num, den) {
+      return `<mfrac>${num}${den}</mfrac>`;
+    }
+
+    function parens(content) {
+      return row(fixedMo("("), content, fixedMo(")"));
+    }
+
+    function brackets(content) {
+      return row(fixedMo("["), content, fixedMo("]"));
+    }
+
+    function braces(content) {
+      return row(fixedMo("{"), content, fixedMo("}"));
+    }
+
+    function call(name, content) {
+      return row(normalMi(name), mo("&ApplyFunction;"), parens(content));
+    }
+
+    function times() {
+      return mo("&InvisibleTimes;");
+    }
+
+    function sum(top, bottom) {
+      return `<munderover>${mo("&sum;")}${bottom}${top}</munderover>`;
+    }
+
+    function math(content, className = "math-main") {
+      return `<math class="${className}" display="block"><mstyle displaystyle="true">${content}</mstyle></math>`;
+    }
+
+    function mathBlock(...lines) {
+      return `<div class="math-render">${lines.join("")}</div>`;
+    }
+
+    function presetEquationHtml(preset) {
+      const x = mi("x");
+      const y = mi("y");
+      const t = mi("t");
+      const i = mi("i");
+      const k = mi("k");
+      const omega = mi("&omega;");
+      const phi = mi("&phi;");
+      const ki = sub(k, i);
+      const k0 = sub(k, mn("0"));
+      const yi = row(y, parens(row(x, mo(","), t)));
+
+      if (preset.id === "single-cos") {
+        return mathBlock(math(row(yi, mo("="), call("cos", row(k0, times(), x, mo("-"), row(omega, parens(k0)), times(), t)))));
+      }
+      if (preset.id === "beats-close") {
+        const k1 = sub(k, mn("1"));
+        const k2 = sub(k, mn("2"));
+        const omega1 = sub(omega, mn("1"));
+        const omega2 = sub(omega, mn("2"));
+        return mathBlock(math(row(y, mo("="), call("cos", row(k1, times(), x, mo("-"), omega1, times(), t)), mo("+"), call("cos", row(k2, times(), x, mo("-"), omega2, times(), t)))));
+      }
+      if (preset.id === "three-around") {
+        return mathBlock(
+          math(row(y, mo("="), sum(mn("3"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), sub(omega, i), times(), t)))),
+          math(row(ki, mo("&isin;"), braces(row(mn("8"), mo(","), mn("10"), mo(","), mn("12")))), "math-note")
+        );
+      }
+      if (preset.id === "five-around") {
+        return mathBlock(
+          math(row(y, mo("="), sum(mn("5"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), sub(omega, i), times(), t)))),
+          math(row(ki, mo("&isin;"), brackets(row(mn("8"), mo(","), mn("12")))), "math-note")
+        );
+      }
+      if (preset.id === "pdf-packet") {
+        return mathBlock(
+          math(row(yi, mo("="), sum(mn("100"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t)))),
+          math(row(ki, mo("="), mn("8"), mo("+"), frac(row(mn("4"), parens(row(i, mo("-"), mn("1")))), mn("99")), mo(","), mn("1"), mo("&le;"), i, mo("&le;"), mn("100")), "math-note")
+        );
+      }
+      if (preset.id === "narrow-dk") {
+        return mathBlock(
+          math(row(y, mo("="), sum(mn("100"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t)))),
+          math(row(ki, mo("&isin;"), brackets(row(mn("9"), mo(","), mn("11")))), "math-note")
+        );
+      }
+      if (preset.id === "wide-dk") {
+        return mathBlock(
+          math(row(y, mo("="), sum(mn("100"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t)))),
+          math(row(ki, mo("&isin;"), brackets(row(mn("6"), mo(","), mn("14")))), "math-note")
+        );
+      }
+      return mathBlock(
+        math(row(y, mo("="), sum(mn("48"), row(i, mo("="), mn("1"))), sub(mi("A"), i), sub(mi("f"), i), parens(row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t, mo("+"), sub(phi, i))))),
+        math(row(sub(mi("f"), i), mo("&isin;"), braces(row(normalMi("sin"), mo(","), normalMi("cos")))), "math-note")
+      );
+    }
+
+    function customEquationHtml() {
+      if (customError) {
+        return `<math display="block"><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mtext>${escapeHtml(customError)}</mtext></mrow></math>`;
+      }
+      return `<math display="block"><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mtext>${escapeHtml(customExpressionDisplayText())}</mtext></mrow></math>`;
+    }
+
+    function updateReadout(terms, yScale, centerX) {
+      const k0 = Number(el.k0.value);
+      const deltaK = Number(el.deltaK.value);
+      const deltaXEstimate = deltaK > 0 ? 1 / deltaK : Infinity;
+      const viewSpan = plotView.xMax - plotView.xMin;
+      if (isCustomMode()) {
+        el.equation.innerHTML = customEquationHtml();
+        el.readout.innerHTML = [
+          ["t", simTime.toFixed(3)],
+          ["mode", "custom"],
+          ["parser", customError ? "error" : "ok"],
+          ["center x", "n/a"],
+          ["x span", formatNumber(viewSpan)],
+          ["scale", `+/- ${formatNumber(yScale)}`]
+        ].map(([key, value]) => `<span>${key}</span><strong>${value}</strong>`).join("");
+      } else {
+        el.equation.innerHTML = selectedPreset.equationHtml || escapeHtml(selectedPreset.equation);
+        el.readout.innerHTML = [
+          ["t", simTime.toFixed(3)],
+          ["terms", String(terms.length)],
+          ["k range", `${formatNumber(k0 - deltaK)}..${formatNumber(k0 + deltaK)}`],
+          ["v group", formatNumber(groupVelocity(k0))],
+          ["v phase", formatNumber(phaseVelocity(k0))],
+          ["center x", centerX === null ? "n/a" : formatNumber(centerX)],
+          ["x span", formatNumber(viewSpan)],
+          ["1/delta k", Number.isFinite(deltaXEstimate) ? formatNumber(deltaXEstimate) : "infinite"],
+          ["scale", `+/- ${formatNumber(yScale)}`]
+        ].map(([key, value]) => `<span>${key}</span><strong>${value}</strong>`).join("");
+      }
+      el.status.textContent = `t = ${simTime.toFixed(3)}`;
+    }
+
+    function syncPair(range, number) {
+      range.addEventListener("input", () => {
+        number.value = range.value;
+        draw();
+      });
+      number.addEventListener("beforeinput", (event) => event.preventDefault());
+      number.addEventListener("keydown", (event) => event.preventDefault());
+      number.addEventListener("paste", (event) => event.preventDefault());
+      number.addEventListener("input", () => {
+        const min = Number(number.min);
+        const max = Number(number.max);
+        const value = Math.min(max, Math.max(min, Number(number.value)));
+        if (Number.isFinite(value)) range.value = String(value);
+        draw();
+      });
+    }
+
+    function applyPreset(id) {
+      selectedPreset = presets.find((preset) => preset.id === id) || presets[0];
+      el.preset.value = selectedPreset.id;
+      el.k0.value = selectedPreset.k0;
+      el.k0Value.value = selectedPreset.k0;
+      el.deltaK.value = selectedPreset.deltaK;
+      el.deltaKValue.value = selectedPreset.deltaK;
+      el.terms.value = selectedPreset.terms;
+      el.termsValue.value = selectedPreset.terms;
+      el.dispersion.value = selectedPreset.dispersion;
+      el.xWindow.value = selectedPreset.xWindow;
+      el.plotTitle.textContent = selectedPreset.name;
+      resetPlotView();
+      simTime = 0;
+      renderCustomExpression();
+      draw();
+    }
+
+    function switchMode(mode) {
+      selectedMode = mode;
+      el.presetMode.setAttribute("aria-pressed", String(mode === "preset"));
+      el.customMode.setAttribute("aria-pressed", String(mode === "custom"));
+      el.presetPanel.hidden = mode !== "preset";
+      el.customPanel.hidden = mode !== "custom";
+      el.presetOnly.forEach((panel) => {
+        panel.hidden = mode !== "preset";
+      });
+      simTime = 0;
+      if (mode === "preset") {
+        el.plotTitle.textContent = selectedPreset.name;
+        resetPlotView();
+      } else {
+        el.plotTitle.textContent = "Custom f(x,t)";
+        el.xWindow.value = "-10,10";
+        resetPlotView();
+      }
+      renderCustomExpression();
+      draw();
+    }
+
+    function tick(now) {
+      const elapsed = Math.min(0.05, (now - lastFrame) / 1000);
+      lastFrame = now;
+      if (running) {
+        simTime += elapsed * Number(el.speed.value);
+      }
+      draw();
+      requestAnimationFrame(tick);
+    }
+
+    syncPair(el.k0, el.k0Value);
+    syncPair(el.deltaK, el.deltaKValue);
+    syncPair(el.terms, el.termsValue);
+    syncPair(el.speed, el.speedValue);
+
+    el.presetMode.addEventListener("click", () => switchMode("preset"));
+    el.customMode.addEventListener("click", () => switchMode("custom"));
+    el.preset.addEventListener("change", () => applyPreset(el.preset.value));
+    el.dispersion.addEventListener("change", draw);
+    el.xWindow.addEventListener("change", () => {
+      resetPlotView();
+      draw();
+    });
+    el.zoomSlider.addEventListener("input", () => applyZoomLevel(Number(el.zoomSlider.value)));
+    el.zoomIn.addEventListener("click", () => zoomPlot(12));
+    el.zoomOut.addEventListener("click", () => zoomPlot(-12));
+    el.tokenPad.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      if (button.dataset.token) appendCustomToken(button.dataset.token);
+      if (button.dataset.action) handleCustomAction(button.dataset.action);
+    });
+    document.querySelectorAll("[data-example]").forEach((button) => {
+      button.addEventListener("click", () => setCustomExample(button.dataset.example));
+    });
+    el.start.addEventListener("click", () => {
+      running = true;
+      lastFrame = performance.now();
+    });
+    el.pause.addEventListener("click", () => {
+      running = false;
+    });
+    el.reset.addEventListener("click", () => {
+      running = false;
+      simTime = 0;
+      draw();
+    });
+    window.addEventListener("resize", draw);
+
+    applyPreset("pdf-packet");
+    switchMode("preset");
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
