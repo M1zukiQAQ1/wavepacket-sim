@@ -330,6 +330,27 @@
       letter-spacing: 0;
     }
 
+    .topbar-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .time-chip {
+      padding: 4px 12px;
+      border: 1px solid #c8d9ef;
+      border-radius: 999px;
+      background: #eaf2fb;
+      color: var(--blue);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
     .legend {
       display: flex;
       flex-wrap: wrap;
@@ -581,7 +602,10 @@
 
     <section class="stage">
       <div class="topbar">
-        <h2 id="plotTitle">Propagation</h2>
+        <div class="topbar-title">
+          <h2 id="plotTitle">Propagation</h2>
+          <span id="status" class="time-chip">t = 0.000</span>
+        </div>
         <div class="plot-actions">
           <div class="legend">
             <span>wave sum</span>
@@ -600,7 +624,6 @@
       </div>
       <div class="footer">
         <span>Pinch (or scroll) on the plot to zoom the x window. Press Start to animate.</span>
-        <span id="status">t = 0.000</span>
       </div>
     </section>
   </main>
