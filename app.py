@@ -1,4 +1,28 @@
-<!doctype html>
+#!/usr/bin/env python3
+"""Wavepacket propagation simulator.
+
+This app uses only Python's standard library. It serves a local browser GUI
+because the Python installed on this machine does not include Tkinter.
+"""
+
+from __future__ import annotations
+
+import argparse
+import http.server
+import socketserver
+import sys
+import threading
+import time
+import webbrowser
+from pathlib import Path
+
+
+HOST = "127.0.0.1"
+DEFAULT_PORT = 8765
+INDEX_HTML = Path(__file__).with_name("index.html")
+
+
+APP_HTML = r"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -27,7 +51,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(1100px 700px at 15% -10%, #fdfdfc, var(--bg));
+      background: var(--bg);
       color: var(--ink);
       font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
@@ -44,8 +68,8 @@
     section.stage {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 12px;
-      box-shadow: 0 14px 34px rgba(30, 34, 38, 0.07);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(30, 34, 38, 0.08);
     }
 
     aside {
@@ -92,31 +116,22 @@
       min-height: 40px;
       padding: 8px 10px;
       border: 1px solid #c7cad1;
-      border-radius: 8px;
+      border-radius: 6px;
       background: #fff;
       color: var(--ink);
       font: inherit;
       line-height: 1.2;
       text-overflow: ellipsis;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    select:hover {
-      border-color: #9aa3af;
     }
 
     input[type="range"] {
       accent-color: var(--blue);
-      cursor: pointer;
-      min-height: 24px;
     }
 
     input[readonly] {
       background: #f4f5f6;
       color: #2f343a;
       cursor: default;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
     }
 
     .row {
@@ -153,45 +168,18 @@
     button {
       min-height: 38px;
       border: 0;
-      border-radius: 8px;
+      border-radius: 6px;
       background: var(--button);
       color: var(--button-text);
       cursor: pointer;
       font: inherit;
       font-weight: 700;
-      transition: filter 0.12s ease, transform 0.06s ease, background 0.12s ease;
-    }
-
-    button:hover {
-      filter: brightness(1.12);
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    #start {
-      background: var(--blue);
     }
 
     button.secondary {
       background: #eef0f3;
       color: var(--ink);
       border: 1px solid #d6d9df;
-    }
-
-    button.secondary:hover,
-    .mode-switch button:hover,
-    .token-grid button:hover,
-    .example-grid button:hover,
-    .zoom-controls button:hover {
-      filter: none;
-      background: #e2e6eb;
-    }
-
-    .mode-switch button[aria-pressed="true"]:hover {
-      background: var(--button);
-      filter: brightness(1.15);
     }
 
     button:focus-visible,
@@ -240,15 +228,6 @@
     }
 
     .preset-only[hidden] {
-      display: none;
-    }
-
-    .sub-control {
-      display: grid;
-      gap: 8px;
-    }
-
-    .sub-control[hidden] {
       display: none;
     }
 
@@ -312,8 +291,6 @@
       min-height: 58px;
       padding: 12px 16px;
       border-bottom: 1px solid var(--line);
-      background: #fbfbfa;
-      border-radius: 12px 12px 0 0;
     }
 
     .topbar h2 {
@@ -325,16 +302,9 @@
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 12px;
       color: var(--muted);
       font-size: 12px;
-    }
-
-    .legend span {
-      padding: 3px 10px;
-      border: 1px solid #e3e6ea;
-      border-radius: 999px;
-      background: #f6f7f8;
     }
 
     .plot-actions {
@@ -502,21 +472,6 @@
       </div>
 
       <div class="control-group preset-only">
-        <label for="amplitude">Spectral amplitude A(k)</label>
-        <select id="amplitude">
-          <option value="uniform">A(k) = 1</option>
-          <option value="gaussian">A(k) = Gaussian(k0, σ)</option>
-        </select>
-        <div id="sigmaControl" class="sub-control" hidden>
-          <label for="sigma">Gaussian width sigma</label>
-          <div class="row">
-            <input id="sigma" type="range" min="0.1" max="4" value="1" step="0.05" />
-            <input id="sigmaValue" type="number" min="0.1" max="4" value="1" step="0.05" readonly inputmode="none" aria-readonly="true" />
-          </div>
-        </div>
-      </div>
-
-      <div class="control-group preset-only">
         <label for="k0">Central wave number k0</label>
         <div class="row">
           <input id="k0" type="range" min="1" max="18" value="10" step="0.1" />
@@ -671,20 +626,6 @@
         equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>6</mn><mo>,</mo><mn>14</mn><mo>]</mo></mrow></math></div>'
       },
       {
-        id: "gaussian-packet",
-        name: "Gaussian A(k): smooth packet",
-        k0: 10,
-        deltaK: 4,
-        terms: 100,
-        dispersion: "quadratic",
-        xWindow: "-2,24",
-        builder: "uniform-cos",
-        amplitude: "gaussian",
-        sigma: 1,
-        equation: "sum A(k_i) cos(k_i x - k_i^2 t), Gaussian A(k)",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>A</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mo>)</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>6</mn><mo>,</mo><mn>14</mn><mo>]</mo></mrow></math></div>'
-      },
-      {
         id: "mixed-trig",
         name: "Mixed trig: sin/cos superposition",
         k0: 8,
@@ -708,10 +649,6 @@
       pause: document.querySelector("#pause"),
       reset: document.querySelector("#reset"),
       dispersion: document.querySelector("#dispersion"),
-      amplitude: document.querySelector("#amplitude"),
-      sigma: document.querySelector("#sigma"),
-      sigmaValue: document.querySelector("#sigmaValue"),
-      sigmaControl: document.querySelector("#sigmaControl"),
       k0: document.querySelector("#k0"),
       k0Value: document.querySelector("#k0Value"),
       deltaK: document.querySelector("#deltaK"),
@@ -774,18 +711,6 @@
       return omega(k0) / Math.max(k0, 0.000001);
     }
 
-    function isGaussianAmplitude() {
-      return el.amplitude.value === "gaussian";
-    }
-
-    function spectralAmplitude(k) {
-      if (!isGaussianAmplitude()) return 1;
-      const k0 = Number(el.k0.value);
-      const sigma = Math.max(0.05, Number(el.sigma.value));
-      const dk = k - k0;
-      return Math.exp(-(dk * dk) / (2 * sigma * sigma)) / (2 * Math.PI * Math.sqrt(sigma));
-    }
-
     function lerp(a, b, u) {
       return a + (b - a) * u;
     }
@@ -842,9 +767,7 @@
     }
 
     function termAmplitudeScale(terms) {
-      // Gaussian A(k) keeps the 1/(2 pi sqrt(sigma)) prefactor, so the sum can be below 1.
-      const sum = terms.reduce((total, term) => total + Math.abs(term.amp), 0);
-      return sum > 0 ? sum : 1;
+      return Math.max(1, terms.reduce((sum, term) => sum + Math.abs(term.amp), 0));
     }
 
     function estimateMaxK(terms) {
@@ -1114,8 +1037,8 @@
       const builder = selectedPreset.builder;
 
       if (builder === "edge-cos") {
-        terms.push({ trig: "cos", k: k0 - deltaK, amp: spectralAmplitude(k0 - deltaK), phase: 0 });
-        terms.push({ trig: "cos", k: k0 + deltaK, amp: spectralAmplitude(k0 + deltaK), phase: 0 });
+        terms.push({ trig: "cos", k: k0 - deltaK, amp: 1, phase: 0 });
+        terms.push({ trig: "cos", k: k0 + deltaK, amp: 1, phase: 0 });
         return terms;
       }
 
@@ -1126,11 +1049,11 @@
           terms.push({
             trig: i % 2 === 0 ? "cos" : "sin",
             k,
-            amp: (0.75 + 0.25 * Math.cos(Math.PI * (u - 0.5))) * spectralAmplitude(k),
+            amp: 0.75 + 0.25 * Math.cos(Math.PI * (u - 0.5)),
             phase: (i % 5) * 0.18
           });
         } else {
-          terms.push({ trig: "cos", k, amp: spectralAmplitude(k), phase: 0 });
+          terms.push({ trig: "cos", k, amp: 1, phase: 0 });
         }
       }
       return terms;
@@ -1270,81 +1193,7 @@
       ctx.globalAlpha = 1;
 
       drawLabels({ width, height, margin, plotW, plotH, xMin, xMax, yMax, xToPx, yToPx });
-      drawSpectrumInset({ margin, plotW }, terms);
       updateReadout(terms, yMax, centerX);
-    }
-
-    function drawSpectrumInset(plot, terms) {
-      if (isCustomMode() || terms.length < 2) return;
-      const sorted = [...terms].sort((a, b) => a.k - b.k);
-      const kMin = sorted[0].k;
-      const kMax = sorted[sorted.length - 1].k;
-      const maxAmp = Math.max(...sorted.map((term) => Math.abs(term.amp)));
-      if (kMax - kMin <= 0 || !(maxAmp > 0)) return;
-
-      const { margin, plotW } = plot;
-      const w = 186;
-      const h = 96;
-      const x0 = margin.left + plotW - w - 12;
-      const y0 = margin.top + 12;
-      const pad = { left: 12, right: 12, top: 24, bottom: 20 };
-      const innerW = w - pad.left - pad.right;
-      const innerH = h - pad.top - pad.bottom;
-      const baseY = y0 + h - pad.bottom;
-      const kToPx = (k) => x0 + pad.left + ((k - kMin) / (kMax - kMin)) * innerW;
-      const aToPx = (amp) => baseY - (Math.abs(amp) / maxAmp) * innerH;
-
-      ctx.save();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.93)";
-      ctx.strokeStyle = "#c9cdd4";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      if (typeof ctx.roundRect === "function") {
-        ctx.roundRect(x0, y0, w, h, 8);
-      } else {
-        ctx.rect(x0, y0, w, h);
-      }
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(kToPx(kMin), baseY);
-      for (const term of sorted) {
-        ctx.lineTo(kToPx(term.k), aToPx(term.amp));
-      }
-      ctx.lineTo(kToPx(kMax), baseY);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(40, 107, 181, 0.16)";
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(kToPx(kMin), baseY);
-      ctx.lineTo(kToPx(kMin), aToPx(sorted[0].amp));
-      for (const term of sorted) {
-        ctx.lineTo(kToPx(term.k), aToPx(term.amp));
-      }
-      ctx.lineTo(kToPx(kMax), baseY);
-      ctx.strokeStyle = "#286bb5";
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
-
-      ctx.strokeStyle = "#9aa1aa";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x0 + pad.left, baseY);
-      ctx.lineTo(x0 + w - pad.right, baseY);
-      ctx.stroke();
-
-      ctx.fillStyle = "#4d545c";
-      ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      ctx.fillText(isGaussianAmplitude() ? "A(k): Gaussian" : "A(k) = 1", x0 + pad.left, y0 + 7);
-      ctx.textBaseline = "top";
-      ctx.textAlign = "center";
-      ctx.fillText(formatNumber(kMin), kToPx(kMin), baseY + 4);
-      ctx.fillText(formatNumber(kMax), kToPx(kMax), baseY + 4);
-      ctx.restore();
     }
 
     function drawLabels(plot) {
@@ -1539,13 +1388,6 @@
       );
     }
 
-    function amplitudeEquationHtml() {
-      if (isGaussianAmplitude()) {
-        return '<div class="equation-note"><math><mrow><mi>A</mi><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>&pi;</mi><msqrt><mi>&sigma;</mi></msqrt></mrow></mfrac><msup><mi>e</mi><mrow><mo>-</mo><msup><mrow><mo>(</mo><mi>k</mi><mo>-</mo><msub><mi>k</mi><mn>0</mn></msub><mo>)</mo></mrow><mn>2</mn></msup><mo>/</mo><mn>2</mn><msup><mi>&sigma;</mi><mn>2</mn></msup></mrow></msup></mrow></math></div>';
-      }
-      return '<div class="equation-note"><math><mrow><mi>A</mi><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mn>1</mn></mrow></math></div>';
-    }
-
     function customEquationHtml() {
       if (customError) {
         return `<math display="block"><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mtext>${escapeHtml(customError)}</mtext></mrow></math>`;
@@ -1569,11 +1411,10 @@
           ["scale", `+/- ${formatNumber(yScale)}`]
         ].map(([key, value]) => `<span>${key}</span><strong>${value}</strong>`).join("");
       } else {
-        el.equation.innerHTML = (selectedPreset.equationHtml || escapeHtml(selectedPreset.equation)) + amplitudeEquationHtml();
+        el.equation.innerHTML = selectedPreset.equationHtml || escapeHtml(selectedPreset.equation);
         el.readout.innerHTML = [
           ["t", simTime.toFixed(3)],
           ["terms", String(terms.length)],
-          ["A(k)", isGaussianAmplitude() ? `Gauss σ=${formatNumber(Number(el.sigma.value))}` : "1"],
           ["k range", `${formatNumber(k0 - deltaK)}..${formatNumber(k0 + deltaK)}`],
           ["v group", formatNumber(groupVelocity(k0))],
           ["v phase", formatNumber(phaseVelocity(k0))],
@@ -1603,17 +1444,9 @@
       });
     }
 
-    function updateSigmaVisibility() {
-      el.sigmaControl.hidden = !isGaussianAmplitude();
-    }
-
     function applyPreset(id) {
       selectedPreset = presets.find((preset) => preset.id === id) || presets[0];
       el.preset.value = selectedPreset.id;
-      el.amplitude.value = selectedPreset.amplitude || "uniform";
-      el.sigma.value = selectedPreset.sigma ?? 1;
-      el.sigmaValue.value = selectedPreset.sigma ?? 1;
-      updateSigmaVisibility();
       el.k0.value = selectedPreset.k0;
       el.k0Value.value = selectedPreset.k0;
       el.deltaK.value = selectedPreset.deltaK;
@@ -1664,17 +1497,12 @@
     syncPair(el.k0, el.k0Value);
     syncPair(el.deltaK, el.deltaKValue);
     syncPair(el.terms, el.termsValue);
-    syncPair(el.sigma, el.sigmaValue);
     syncPair(el.speed, el.speedValue);
 
     el.presetMode.addEventListener("click", () => switchMode("preset"));
     el.customMode.addEventListener("click", () => switchMode("custom"));
     el.preset.addEventListener("change", () => applyPreset(el.preset.value));
     el.dispersion.addEventListener("change", draw);
-    el.amplitude.addEventListener("change", () => {
-      updateSigmaVisibility();
-      draw();
-    });
     el.xWindow.addEventListener("change", () => {
       resetPlotView();
       draw();
@@ -1711,3 +1539,59 @@
   </script>
 </body>
 </html>
+"""
+
+
+class WavepacketHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        if self.path not in {"/", "/index.html"}:
+            self.send_error(404, "Not found")
+            return
+        if INDEX_HTML.exists():
+            body = INDEX_HTML.read_bytes()
+        else:
+            body = APP_HTML.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        return
+
+
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
+def serve(port: int, open_browser: bool) -> None:
+    with ReusableTCPServer((HOST, port), WavepacketHandler) as httpd:
+        url = f"http://{HOST}:{port}"
+        print(f"Wavepacket simulator running at {url}")
+        print("Press Ctrl+C to stop.")
+        if open_browser:
+            threading.Timer(0.35, lambda: webbrowser.open(url)).start()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nStopping simulator.")
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the wavepacket propagation GUI.")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Local port to serve the GUI on.")
+    parser.add_argument("--no-browser", action="store_true", help="Do not open the browser automatically.")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(sys.argv[1:] if argv is None else argv)
+    serve(args.port, open_browser=not args.no_browser)
+    time.sleep(0.05)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
