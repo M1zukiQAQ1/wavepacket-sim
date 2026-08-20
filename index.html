@@ -216,19 +216,27 @@
 
     .equation {
       display: grid;
-      gap: 4px;
+      gap: 2px;
       justify-items: start;
       font-size: 14px;
       line-height: 1.3;
+      overflow-x: auto;
     }
 
-    .equation math {
-      font-family: "Times New Roman", Times, serif;
-      font-size: 20px;
+    .equation .katex-display {
+      margin: 2px 0;
     }
 
-    .equation-note math {
-      font-size: 16px;
+    .equation .katex-display > .katex {
+      text-align: left;
+    }
+
+    .equation-line .katex {
+      font-size: 1.18em;
+    }
+
+    .equation-line.equation-note .katex {
+      font-size: 1em;
     }
 
     .custom-panel[hidden] {
@@ -420,6 +428,8 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
   <main>
@@ -596,7 +606,7 @@
         xWindow: "-10,10",
         builder: "uniform-cos",
         equation: "cos(k0 x - ω(k0)t)",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mn>0</mn></msub><mi>x</mi><mo>-</mo><mi>&omega;</mi><mo>(</mo><msub><mi>k</mi><mn>0</mn></msub><mo>)</mo><mi>t</mi><mo>)</mo></mrow></math>'
+        equationLatex: "y(x,t) = \\cos\\left(k_0 x - \\omega(k_0)\\,t\\right)"
       },
       {
         id: "beats-close",
@@ -608,7 +618,7 @@
         xWindow: "-10,10",
         builder: "edge-cos",
         equation: "cos(k1 x - ω1 t) + cos(k2 x - ω2 t)",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mn>1</mn></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mn>1</mn></msub><mi>t</mi><mo>)</mo><mo>+</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mn>2</mn></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mn>2</mn></msub><mi>t</mi><mo>)</mo></mrow></math>'
+        equationLatex: "y = \\cos(k_1 x - \\omega_1 t) + \\cos(k_2 x - \\omega_2 t)"
       },
       {
         id: "three-around",
@@ -620,7 +630,8 @@
         xWindow: "-10,10",
         builder: "uniform-cos",
         equation: "sum cos(k_i x - ω_i t), k_i = 8, 10, 12",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mi>i</mi></msub><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>{</mo><mn>8</mn><mo>,</mo><mn>10</mn><mo>,</mo><mn>12</mn><mo>}</mo></mrow></math></div>'
+        equationLatex: "y = \\sum_{i=1}^{3} \\cos(k_i x - \\omega_i t)",
+        noteLatex: "k_i \\in \\{8,\\, 10,\\, 12\\}"
       },
       {
         id: "five-around",
@@ -632,7 +643,8 @@
         xWindow: "-10,10",
         builder: "uniform-cos",
         equation: "sum cos(k_i x - ω_i t), k_i = 8..12",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>5</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msub><mi>&omega;</mi><mi>i</mi></msub><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>8</mn><mo>,</mo><mn>12</mn><mo>]</mo></mrow></math></div>'
+        equationLatex: "y = \\sum_{i=1}^{5} \\cos(k_i x - \\omega_i t)",
+        noteLatex: "k_i \\in [8, 12]"
       },
       {
         id: "pdf-packet",
@@ -644,7 +656,8 @@
         xWindow: "-2,24",
         builder: "uniform-cos",
         equation: "sum cos(k x - k^2 t), 100 k values from 8 to 12",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>=</mo><mn>8</mn><mo>+</mo><mfrac><mrow><mn>4</mn><mo>(</mo><mi>i</mi><mo>-</mo><mn>1</mn><mo>)</mo></mrow><mn>99</mn></mfrac><mo>,</mo><mspace width="0.5em"></mspace><mn>1</mn><mo>&le;</mo><mi>i</mi><mo>&le;</mo><mn>100</mn></mrow></math></div>'
+        equationLatex: "y(x,t) = \\sum_{i=1}^{100} \\cos(k_i x - k_i^2 t)",
+        noteLatex: "k_i = 8 + \\tfrac{4(i-1)}{99}, \\quad 1 \\le i \\le 100"
       },
       {
         id: "narrow-dk",
@@ -656,7 +669,8 @@
         xWindow: "-10,10",
         builder: "uniform-cos",
         equation: "smaller delta k gives a wider packet",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>9</mn><mo>,</mo><mn>11</mn><mo>]</mo></mrow></math></div>'
+        equationLatex: "y = \\sum_{i=1}^{100} \\cos(k_i x - k_i^2 t)",
+        noteLatex: "k_i \\in [9, 11]"
       },
       {
         id: "wide-dk",
@@ -668,7 +682,8 @@
         xWindow: "-10,10",
         builder: "uniform-cos",
         equation: "larger delta k gives a tighter packet",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>6</mn><mo>,</mo><mn>14</mn><mo>]</mo></mrow></math></div>'
+        equationLatex: "y = \\sum_{i=1}^{100} \\cos(k_i x - k_i^2 t)",
+        noteLatex: "k_i \\in [6, 14]"
       },
       {
         id: "gaussian-packet",
@@ -682,7 +697,8 @@
         amplitude: "gaussian",
         sigma: 1,
         equation: "sum A(k_i) cos(k_i x - k_i^2 t), Gaussian A(k)",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mi>A</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mo>)</mo><mi>cos</mi><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>k</mi><mi>i</mi></msub><mo>&isin;</mo><mo>[</mo><mn>6</mn><mo>,</mo><mn>14</mn><mo>]</mo></mrow></math></div>'
+        equationLatex: "y(x,t) = \\sum_{i=1}^{100} A(k_i)\\cos(k_i x - k_i^2 t)",
+        noteLatex: "k_i \\in [6, 14]"
       },
       {
         id: "mixed-trig",
@@ -694,7 +710,8 @@
         xWindow: "-2,24",
         builder: "mixed-trig",
         equation: "alternating sin and cos terms with small phase offsets",
-        equationHtml: '<math display="block"><mrow><mi>y</mi><mo>=</mo><munderover><mo>&sum;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>48</mn></munderover><msub><mi>A</mi><mi>i</mi></msub><msub><mi>f</mi><mi>i</mi></msub><mo>(</mo><msub><mi>k</mi><mi>i</mi></msub><mi>x</mi><mo>-</mo><msubsup><mi>k</mi><mi>i</mi><mn>2</mn></msubsup><mi>t</mi><mo>+</mo><msub><mi>&phi;</mi><mi>i</mi></msub><mo>)</mo></mrow></math><div class="equation-note"><math><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>&isin;</mo><mo>{</mo><mi>sin</mi><mo>,</mo><mi>cos</mi><mo>}</mo></mrow></math></div>'
+        equationLatex: "y = \\sum_{i=1}^{48} A_i\\, f_i(k_i x - k_i^2 t + \\varphi_i)",
+        noteLatex: "f_i \\in \\{\\sin, \\cos\\}"
       }
     ];
 
@@ -1400,157 +1417,37 @@
       return value.toFixed(2);
     }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-    }
-
-    function mi(value, attrs = "") {
-      return `<mi${attrs ? ` ${attrs}` : ""}>${value}</mi>`;
-    }
-
-    function mn(value) {
-      return `<mn>${value}</mn>`;
-    }
-
-    function mo(value, attrs = "") {
-      return `<mo${attrs ? ` ${attrs}` : ""}>${value}</mo>`;
-    }
-
-    function fixedMo(value) {
-      return mo(value, 'stretchy="false"');
-    }
-
-    function normalMi(value) {
-      return mi(value, 'mathvariant="normal"');
-    }
-
-    function row(...parts) {
-      return `<mrow>${parts.join("")}</mrow>`;
-    }
-
-    function sub(base, index) {
-      return `<msub>${base}${index}</msub>`;
-    }
-
-    function sup(base, power) {
-      return `<msup>${base}${power}</msup>`;
-    }
-
-    function subSup(base, index, power) {
-      return `<msubsup>${base}${index}${power}</msubsup>`;
-    }
-
-    function frac(num, den) {
-      return `<mfrac>${num}${den}</mfrac>`;
-    }
-
-    function parens(content) {
-      return row(fixedMo("("), content, fixedMo(")"));
-    }
-
-    function brackets(content) {
-      return row(fixedMo("["), content, fixedMo("]"));
-    }
-
-    function braces(content) {
-      return row(fixedMo("{"), content, fixedMo("}"));
-    }
-
-    function call(name, content) {
-      return row(normalMi(name), mo("&ApplyFunction;"), parens(content));
-    }
-
-    function times() {
-      return mo("&InvisibleTimes;");
-    }
-
-    function sum(top, bottom) {
-      return `<munderover>${mo("&sum;")}${bottom}${top}</munderover>`;
-    }
-
-    function math(content, className = "math-main") {
-      return `<math class="${className}" display="block"><mstyle displaystyle="true">${content}</mstyle></math>`;
-    }
-
-    function mathBlock(...lines) {
-      return `<div class="math-render">${lines.join("")}</div>`;
-    }
-
-    function presetEquationHtml(preset) {
-      const x = mi("x");
-      const y = mi("y");
-      const t = mi("t");
-      const i = mi("i");
-      const k = mi("k");
-      const omega = mi("&omega;");
-      const phi = mi("&phi;");
-      const ki = sub(k, i);
-      const k0 = sub(k, mn("0"));
-      const yi = row(y, parens(row(x, mo(","), t)));
-
-      if (preset.id === "single-cos") {
-        return mathBlock(math(row(yi, mo("="), call("cos", row(k0, times(), x, mo("-"), row(omega, parens(k0)), times(), t)))));
-      }
-      if (preset.id === "beats-close") {
-        const k1 = sub(k, mn("1"));
-        const k2 = sub(k, mn("2"));
-        const omega1 = sub(omega, mn("1"));
-        const omega2 = sub(omega, mn("2"));
-        return mathBlock(math(row(y, mo("="), call("cos", row(k1, times(), x, mo("-"), omega1, times(), t)), mo("+"), call("cos", row(k2, times(), x, mo("-"), omega2, times(), t)))));
-      }
-      if (preset.id === "three-around") {
-        return mathBlock(
-          math(row(y, mo("="), sum(mn("3"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), sub(omega, i), times(), t)))),
-          math(row(ki, mo("&isin;"), braces(row(mn("8"), mo(","), mn("10"), mo(","), mn("12")))), "math-note")
-        );
-      }
-      if (preset.id === "five-around") {
-        return mathBlock(
-          math(row(y, mo("="), sum(mn("5"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), sub(omega, i), times(), t)))),
-          math(row(ki, mo("&isin;"), brackets(row(mn("8"), mo(","), mn("12")))), "math-note")
-        );
-      }
-      if (preset.id === "pdf-packet") {
-        return mathBlock(
-          math(row(yi, mo("="), sum(mn("100"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t)))),
-          math(row(ki, mo("="), mn("8"), mo("+"), frac(row(mn("4"), parens(row(i, mo("-"), mn("1")))), mn("99")), mo(","), mn("1"), mo("&le;"), i, mo("&le;"), mn("100")), "math-note")
-        );
-      }
-      if (preset.id === "narrow-dk") {
-        return mathBlock(
-          math(row(y, mo("="), sum(mn("100"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t)))),
-          math(row(ki, mo("&isin;"), brackets(row(mn("9"), mo(","), mn("11")))), "math-note")
-        );
-      }
-      if (preset.id === "wide-dk") {
-        return mathBlock(
-          math(row(y, mo("="), sum(mn("100"), row(i, mo("="), mn("1"))), call("cos", row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t)))),
-          math(row(ki, mo("&isin;"), brackets(row(mn("6"), mo(","), mn("14")))), "math-note")
-        );
-      }
-      return mathBlock(
-        math(row(y, mo("="), sum(mn("48"), row(i, mo("="), mn("1"))), sub(mi("A"), i), sub(mi("f"), i), parens(row(ki, times(), x, mo("-"), subSup(k, i, mn("2")), times(), t, mo("+"), sub(phi, i))))),
-        math(row(sub(mi("f"), i), mo("&isin;"), braces(row(normalMi("sin"), mo(","), normalMi("cos")))), "math-note")
-      );
-    }
-
-    function amplitudeEquationHtml() {
+    function amplitudeLatex() {
       if (isGaussianAmplitude()) {
-        return '<div class="equation-note"><math><mrow><mi>A</mi><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>&pi;</mi><msqrt><mi>&sigma;</mi></msqrt></mrow></mfrac><msup><mi>e</mi><mrow><mo>-</mo><msup><mrow><mo>(</mo><mi>k</mi><mo>-</mo><msub><mi>k</mi><mn>0</mn></msub><mo>)</mo></mrow><mn>2</mn></msup><mo>/</mo><mn>2</mn><msup><mi>&sigma;</mi><mn>2</mn></msup></mrow></msup></mrow></math></div>';
+        return "A(k) = \\frac{1}{2\\pi\\sqrt{\\sigma}}\\, e^{-(k - k_0)^2 / 2\\sigma^2}";
       }
-      return '<div class="equation-note"><math><mrow><mi>A</mi><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mn>1</mn></mrow></math></div>';
+      return "A(k) = 1";
     }
 
-    function customEquationHtml() {
-      if (customError) {
-        return `<math display="block"><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mtext>${escapeHtml(customError)}</mtext></mrow></math>`;
+    let equationCacheKey = "";
+
+    function renderEquationLatex(lines, fallbackText) {
+      const key = "latex:" + lines.join(" || ");
+      if (equationCacheKey === key) return;
+      equationCacheKey = key;
+      el.equation.innerHTML = "";
+      if (typeof katex === "undefined") {
+        el.equation.textContent = fallbackText;
+        return;
       }
-      return `<math display="block"><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo>)</mo><mo>=</mo><mtext>${escapeHtml(customExpressionDisplayText())}</mtext></mrow></math>`;
+      lines.forEach((latex, index) => {
+        const line = document.createElement("div");
+        line.className = index === 0 ? "equation-line" : "equation-line equation-note";
+        katex.render(latex, line, { throwOnError: false, displayMode: true });
+        el.equation.appendChild(line);
+      });
+    }
+
+    function renderEquationText(text) {
+      const key = "text:" + text;
+      if (equationCacheKey === key) return;
+      equationCacheKey = key;
+      el.equation.textContent = text;
     }
 
     function updateReadout(terms, yScale, centerX) {
@@ -1559,7 +1456,9 @@
       const deltaXEstimate = deltaK > 0 ? 1 / deltaK : Infinity;
       const viewSpan = plotView.xMax - plotView.xMin;
       if (isCustomMode()) {
-        el.equation.innerHTML = customEquationHtml();
+        renderEquationText(customError
+          ? `f(x,t): ${customError}`
+          : `f(x,t) = ${customExpressionDisplayText()}`);
         el.readout.innerHTML = [
           ["t", simTime.toFixed(3)],
           ["mode", "custom"],
@@ -1569,7 +1468,10 @@
           ["scale", `+/- ${formatNumber(yScale)}`]
         ].map(([key, value]) => `<span>${key}</span><strong>${value}</strong>`).join("");
       } else {
-        el.equation.innerHTML = (selectedPreset.equationHtml || escapeHtml(selectedPreset.equation)) + amplitudeEquationHtml();
+        const equationLines = [selectedPreset.equationLatex];
+        if (selectedPreset.noteLatex) equationLines.push(selectedPreset.noteLatex);
+        equationLines.push(amplitudeLatex());
+        renderEquationLatex(equationLines, selectedPreset.equation);
         el.readout.innerHTML = [
           ["t", simTime.toFixed(3)],
           ["terms", String(terms.length)],
