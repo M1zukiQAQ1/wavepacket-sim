@@ -401,6 +401,25 @@
       width: 100%;
       height: 100%;
       min-height: 300px;
+      touch-action: pan-y;
+    }
+
+    .zoom-hint {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(32, 33, 36, 0.78);
+      color: #fff;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.6s ease;
+    }
+
+    .zoom-hint.hidden {
+      opacity: 0;
     }
 
     .footer {
@@ -552,13 +571,6 @@
           <input id="speed" type="range" min="0.02" max="2.0" value="0.25" step="0.02" />
           <input id="speedValue" type="number" min="0.02" max="2.0" value="0.25" step="0.02" readonly inputmode="none" aria-readonly="true" />
         </div>
-
-        <label for="xWindow">X window</label>
-        <select id="xWindow">
-          <option value="-10,10">-10 to 10</option>
-          <option value="-2,24">-2 to 24</option>
-          <option value="-20,20">-20 to 20</option>
-        </select>
       </div>
 
       <div class="control-group">
@@ -584,9 +596,10 @@
       </div>
       <div class="canvas-wrap">
         <canvas id="plot" width="1200" height="700" aria-label="Animated wavepacket plot"></canvas>
+        <div id="zoomHint" class="zoom-hint">Pinch or scroll on the plot to zoom</div>
       </div>
       <div class="footer">
-        <span>Press Start to animate. The packet in the PDF example moves near x = 2 k0 t when ω(k)=k^2.</span>
+        <span>Pinch (or scroll) on the plot to zoom the x window. Press Start to animate.</span>
         <span id="status">t = 0.000</span>
       </div>
     </section>
@@ -737,7 +750,7 @@
       termsValue: document.querySelector("#termsValue"),
       speed: document.querySelector("#speed"),
       speedValue: document.querySelector("#speedValue"),
-      xWindow: document.querySelector("#xWindow"),
+      zoomHint: document.querySelector("#zoomHint"),
       customPanel: document.querySelector("#customPanel"),
       customExpression: document.querySelector("#customExpression"),
       tokenPad: document.querySelector("#tokenPad"),
@@ -760,6 +773,7 @@
     let customTokens = ["sin", "(", "x", "-", "t", ")"];
     let customCompiled = null;
     let customError = "";
+    let baseXWindowValue = "-2,24";
     let basePlotView = { xMin: -2, xMax: 24 };
     let plotView = { xMin: -2, xMax: 24 };
     let zoomLevel = 0;
@@ -817,7 +831,7 @@
     }
 
     function resetPlotView() {
-      basePlotView = parseXWindowValue(el.xWindow.value);
+      basePlotView = parseXWindowValue(baseXWindowValue);
       plotView = { ...basePlotView };
       zoomLevel = 0;
       updateZoomSlider();
@@ -1523,7 +1537,7 @@
       el.terms.value = selectedPreset.terms;
       el.termsValue.value = selectedPreset.terms;
       el.dispersion.value = selectedPreset.dispersion;
-      el.xWindow.value = selectedPreset.xWindow;
+      baseXWindowValue = selectedPreset.xWindow;
       el.plotTitle.textContent = selectedPreset.name;
       resetPlotView();
       simTime = 0;
@@ -1546,7 +1560,7 @@
         resetPlotView();
       } else {
         el.plotTitle.textContent = "Custom f(x,t)";
-        el.xWindow.value = "-10,10";
+        baseXWindowValue = "-10,10";
         resetPlotView();
       }
       renderCustomExpression();
@@ -1577,10 +1591,54 @@
       updateSigmaVisibility();
       draw();
     });
-    el.xWindow.addEventListener("change", () => {
-      resetPlotView();
-      draw();
+    let zoomHintDismissed = false;
+
+    function dismissZoomHint() {
+      if (zoomHintDismissed) return;
+      zoomHintDismissed = true;
+      el.zoomHint.classList.add("hidden");
+    }
+
+    setTimeout(dismissZoomHint, 8000);
+
+    // Trackpad pinch arrives as a ctrl-modified wheel event; plain wheel scroll also zooms.
+    el.canvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const dy = event.deltaY * (event.deltaMode === 1 ? 33 : 1);
+      zoomPlot(event.ctrlKey ? -dy * 0.35 : -dy * 0.06);
+      dismissZoomHint();
+    }, { passive: false });
+
+    function touchDistance(touches) {
+      return Math.hypot(
+        touches[0].clientX - touches[1].clientX,
+        touches[0].clientY - touches[1].clientY
+      );
+    }
+
+    let pinchStartDistance = 0;
+    let pinchStartZoom = 0;
+
+    el.canvas.addEventListener("touchstart", (event) => {
+      if (event.touches.length === 2) {
+        pinchStartDistance = touchDistance(event.touches);
+        pinchStartZoom = zoomLevel;
+      }
+    }, { passive: true });
+
+    el.canvas.addEventListener("touchmove", (event) => {
+      if (event.touches.length === 2 && pinchStartDistance > 0) {
+        event.preventDefault();
+        const scale = touchDistance(event.touches) / pinchStartDistance;
+        applyZoomLevel(pinchStartZoom + Math.log(scale) / Math.log(1 / 0.96));
+        dismissZoomHint();
+      }
+    }, { passive: false });
+
+    el.canvas.addEventListener("touchend", () => {
+      pinchStartDistance = 0;
     });
+
     el.zoomSlider.addEventListener("input", () => applyZoomLevel(Number(el.zoomSlider.value)));
     el.zoomIn.addEventListener("click", () => zoomPlot(12));
     el.zoomOut.addEventListener("click", () => zoomPlot(-12));
